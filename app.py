@@ -13,9 +13,16 @@ st.set_page_config(
 
 # Carregar dados com cache para melhor performance
 @st.cache_data
+@st.cache_data
 def load_wine_data():
     try:
-        df = pd.read_csv("VinhosFinos.csv")
+        # TENTATIVA 1: Codificação Windows-1252 (padrão Brasil)
+        try:
+            df = pd.read_csv("VinhosFinos.csv", encoding='cp1252')
+        # TENTATIVA 2: Codificação Latin-1
+        except:
+            df = pd.read_csv("VinhosFinos.csv", encoding='latin1')
+        
         # Validação das colunas necessárias
         required_columns = ['Nome', 'Preco_CNPJ', 'Preco_PF', 'Notas_Sabor', 'Combinacoes']
         if not all(col in df.columns for col in required_columns):
@@ -27,6 +34,13 @@ def load_wine_data():
         st.stop()
     except Exception as e:
         st.error(f"❌ Erro ao carregar os dados: {str(e)}")
+        st.error("💡 **Solução:** Salve seu CSV como UTF-8 no Excel ou use a opção 'Correção Automática' abaixo")
+        st.download_button(
+            "⏬ Baixar Corretor de Codificação",
+            data=open("fix_encoding.py", "rb").read(),
+            file_name="fix_encoding.py",
+            mime="application/x-python"
+        )
         st.stop()
 
 # Função para calcular desconto seguro
