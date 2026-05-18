@@ -13,34 +13,43 @@ st.set_page_config(
 
 # Carregar dados com cache para melhor performance
 @st.cache_data
-@st.cache_data
 def load_wine_data():
     try:
-        # TENTATIVA 1: Codificação Windows-1252 (padrão Brasil)
-        try:
-            df = pd.read_csv("VinhosFinos.csv", encoding='cp1252')
-        # TENTATIVA 2: Codificação Latin-1
-        except:
-            df = pd.read_csv("VinhosFinos.csv", encoding='latin1')
+        # Detecta automaticamente codificação e delimitador
+        with open("VinhosFinos.csv", 'rb') as f:
+            result = chardet.detect(f.read())
         
-        # Validação das colunas necessárias
+        # Tenta detectar delimitador
+        sample = open("VinhosFinos.csv", encoding=result['encoding']).read(1024)
+        delimiter = ';' if ';' in sample else ','
+        
+        df = pd.read_csv("VinhosFinos.csv", encoding=result['encoding'], sep=delimiter)
+        
+        # Verifica colunas EXATAS
         required_columns = ['Nome', 'Preco_CNPJ', 'Preco_PF', 'Notas_Sabor', 'Combinacoes']
-        if not all(col in df.columns for col in required_columns):
-            st.error("⚠️ O arquivo CSV está faltando colunas essenciais. Verifique a estrutura do arquivo.")
+        missing = [col for col in required_columns if col not in df.columns]
+        
+        if missing:
+            st.error(f"❌ COLUNAS FALTANDO: {', '.join(missing)}")
+            st.warning("📌 **Solução:** Seu CSV deve ter EXATAMENTE estas colunas (sem acentos, sem espaços):")
+            st.code("Nome, Preco_CNPJ, Preco_PF, Notas_Sabor, Combinacoes")
+            
+            # Mostra as colunas reais do CSV para comparação
+            st.info(f"🔍 Colunas encontradas no seu CSV: {', '.join(df.columns)}")
+            
+            # Botão para baixar modelo correto
+            st.download_button(
+                "📥 BAIXAR MODELO CORRETO DE CSV",
+                data="Nome,Preco_CNPJ,Preco_PF,Notas_Sabor,Combinacoes\nVinho Exemplo,100.00,200.00,\"Notas de prova\",\"Combinações sugeridas\"",
+                file_name="modelo_vinhos_correto.csv",
+                mime="text/csv"
+            )
             st.stop()
+            
         return df
-    except FileNotFoundError:
-        st.error("❌ Arquivo 'VinhosFinos.csv' não encontrado. Certifique-se de que o arquivo está no diretório correto.")
-        st.stop()
     except Exception as e:
-        st.error(f"❌ Erro ao carregar os dados: {str(e)}")
-        st.error("💡 **Solução:** Salve seu CSV como UTF-8 no Excel ou use a opção 'Correção Automática' abaixo")
-        st.download_button(
-            "⏬ Baixar Corretor de Codificação",
-            data=open("fix_encoding.py", "rb").read(),
-            file_name="fix_encoding.py",
-            mime="application/x-python"
-        )
+        st.error(f"❌ Erro ao carregar dados: {str(e)}")
+        st.error("🔧 **Dica profissional:** Abra seu CSV em um editor de texto (não no Excel) para verificar a estrutura real")
         st.stop()
 
 # Função para calcular desconto seguro
